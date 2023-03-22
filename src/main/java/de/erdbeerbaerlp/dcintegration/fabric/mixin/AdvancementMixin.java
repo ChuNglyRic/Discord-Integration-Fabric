@@ -22,6 +22,7 @@ public class AdvancementMixin {
 
     @Inject(method = "grantCriterion", at = @At(value = "INVOKE", target = "Lnet/minecraft/advancement/PlayerAdvancementTracker;updateDisplay(Lnet/minecraft/advancement/Advancement;)V"))
     public void advancement(Advancement advancement, String criterionName, CallbackInfoReturnable<Boolean> cir){
+        if(Localization.instance().advancementMessage.isBlank()) return;
         if (discord_instance == null) return;
         if (PlayerLinkController.getSettings(null, owner.getUuid()).hideFromDiscord) return;
             if (advancement != null &&advancement.getDisplay() != null && advancement.getDisplay().shouldAnnounceToChat())

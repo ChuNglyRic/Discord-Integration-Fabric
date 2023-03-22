@@ -33,6 +33,7 @@ public class NetworkHandlerMixin {
     @Inject(at = @At(value = "HEAD"), method = "onDisconnected")
     private void onPlayerLeave(Text reason, CallbackInfo info) {
         if (DiscordIntegration.stopped) return; //Try to fix player leave messages after stop!
+        if(Localization.instance().playerLeave.isBlank()) return;
         if (PlayerLinkController.getSettings(null, player.getUuid()).hideFromDiscord) return;
         if (discord_instance != null && !DiscordIntegration.timeouts.contains(player.getUuid()))
             discord_instance.sendMessage(Localization.instance().playerLeave.replace("%player%", FabricMessageUtils.formatPlayerName(player)));

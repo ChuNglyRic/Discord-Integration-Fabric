@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.network.message.DecoratedContents;
 import net.minecraft.network.message.SignedMessage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -24,6 +25,8 @@ import net.minecraft.text.Text;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
@@ -45,6 +48,7 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
 
     public static SignedMessage handleChatMessage(SignedMessage message, ServerPlayerEntity player) {
         if (discord_instance == null) return message;
+        if(player == null) return message;
         if (PlayerLinkController.getSettings(null, player.getUuid()).hideFromDiscord) {
             return message;
         }
@@ -71,7 +75,8 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
             final String editedJson = GsonComponentSerializer.gson().serialize(MessageUtils.mentionsToNames(comp, channel.getGuild()));
             final MutableText txt = Text.Serializer.fromJson(editedJson);
             //message = message.withUnsignedContent(txt);
-            message = SignedMessage.ofUnsigned(txt.getString());
+            message = SignedMessage.ofUnsigned(new DecoratedContents(txt.getString(),txt));
+
         }
         return message;
     }
@@ -99,18 +104,40 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
     }
 
     private void serverStarting(MinecraftServer minecraftServer) {
+        LOGGER.info("Attempting to resolve discord.com...");
+        try {
+            InetAddress address = InetAddress.getByName("discord.com");
+            LOGGER.info("discord.com address: " + address);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        LOGGER.info("Attempting to resolve discordapp.com...");
+        try {
+            InetAddress address = InetAddress.getByName("discordapp.com");
+            LOGGER.info("discordapp.com address: " + address);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
         discord_instance = new Discord(new FabricServerInterface(minecraftServer));
         try {
             //Wait a short time to allow JDA to get initiaized
-            System.out.println("Waiting for JDA to initialize to send starting message... (max 5 seconds before skipping)");
-            for (int i = 0; i <= 5; i++) {
-                if (discord_instance.getJDA() == null) Thread.sleep(1000);
-                else break;
+            Variables.LOGGER.info("Waiting for JDA to initialize to send starting message... (max 5 seconds before skipping)");
+            for (int i = 0; i <= 50; i++) {
+                if (discord_instance.getJDA() == null) {
+                    Variables.LOGGER.info(i);
+                    Variables.LOGGER.info("Not initialized yet");
+                    Thread.sleep(1000);
+                } else {
+                    Variables.LOGGER.info("Failed to initialize JDA quickly enough");
+                    break;
+                }
             }
             if (discord_instance.getJDA() != null) {
+                Variables.LOGGER.info("JDA loaded");
                 Thread.sleep(2000); //Wait for it to cache the channels
+                CommandRegistry.registerDefaultCommandsFromConfig();
                 if (!Localization.instance().serverStarting.isEmpty()) {
-                    CommandRegistry.registerDefaultCommandsFromConfig();
                     if (discord_instance.getChannel() != null)
                         Variables.startingMsg = discord_instance.sendMessageReturns(Localization.instance().serverStarting, discord_instance.getChannel(Configuration.instance().advanced.serverChannelID));
                 }
@@ -124,12 +151,14 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
         System.out.println("Started");
         if (discord_instance != null) {
         Variables.started = new Date().getTime();
+        if(!Localization.instance().serverStarted.isBlank() && !Localization.instance().serverStarting.isBlank()) {
             if (Variables.startingMsg != null) {
                 Variables.startingMsg.thenAccept((a) -> a.editMessage(Localization.instance().serverStarted).queue());
             } else discord_instance.sendMessage(Localization.instance().serverStarted);
+        }
             discord_instance.startThreads();
         }
-        UpdateChecker.runUpdateCheck("https://raw.githubusercontent.com/ErdbeerbaerLP/Discord-Integration-Fabric/1.19/update-checker.json");
+        UpdateChecker.runUpdateCheck("https://raw.githubusercontent.com/ErdbeerbaerLP/Discord-Integration-Fabric/1.19.2/update-checker.json");
         if (!DownloadSourceChecker.checkDownloadSource(new File(DiscordIntegration.class.getProtectionDomain().getCodeSource().getLocation().getPath().split("%")[0]))) {
             LOGGER.warn("You likely got this mod from a third party website.");
             LOGGER.warn("Some of such websites are distributing malware or old versions.");
@@ -140,6 +169,7 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
 
     private void serverStopping(MinecraftServer minecraftServer) {
         if (discord_instance != null) {
+            if(!Localization.instance().serverStopped.isBlank())
             discord_instance.sendMessage(Localization.instance().serverStopped);
             discord_instance.stopThreads();
         }
@@ -150,6 +180,7 @@ public class DiscordIntegration implements DedicatedServerModInitializer {
         if (discord_instance != null) {
             if (!stopped && discord_instance.getJDA() != null) minecraftServer.execute(() -> {
                 discord_instance.stopThreads();
+                if(!Localization.instance().serverCrash.isBlank())
                 try {
                     discord_instance.sendMessageReturns(Localization.instance().serverCrash, discord_instance.getChannel(Configuration.instance().advanced.serverChannelID)).get();
                 } catch (InterruptedException | ExecutionException ignored) {

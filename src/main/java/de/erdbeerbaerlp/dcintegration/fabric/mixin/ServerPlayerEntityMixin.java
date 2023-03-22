@@ -21,7 +21,8 @@ import static de.erdbeerbaerlp.dcintegration.common.util.Variables.discord_insta
 public class ServerPlayerEntityMixin {
     @Inject(at = @At(value = "TAIL"), method = "onDeath")
     private void onPlayerDeath(DamageSource s, CallbackInfo info) {
-        ServerPlayerEntity p = (ServerPlayerEntity) (Object) this;
+        if(Localization.instance().playerDeath.isBlank()) return;
+        final ServerPlayerEntity p = (ServerPlayerEntity) (Object) this;
 
         if (PlayerLinkController.getSettings(null, p.getUuid()).hideFromDiscord) return;
         if (discord_instance != null) {

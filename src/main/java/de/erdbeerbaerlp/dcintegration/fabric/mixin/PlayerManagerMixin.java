@@ -52,7 +52,8 @@ public class PlayerManagerMixin {
     private void onPlayerJoin(ClientConnection conn, ServerPlayerEntity p, CallbackInfo ci) {
         if (discord_instance != null) {
             if (PlayerLinkController.getSettings(null, p.getUuid()).hideFromDiscord) return;
-            discord_instance.sendMessage(Localization.instance().playerJoin.replace("%player%", FabricMessageUtils.formatPlayerName(p)));
+            if(!Localization.instance().playerJoin.isBlank())
+                discord_instance.sendMessage(Localization.instance().playerJoin.replace("%player%", FabricMessageUtils.formatPlayerName(p)));
 
             // Fix link status (if user does not have role, give the role to the user, or vice versa)
             final Thread fixLinkStatus = new Thread(() -> {

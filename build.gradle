@@ -18,9 +18,6 @@ repositories {
         url = "https://oss.sonatype.org/content/repositories/snapshots/"
     }
     maven { url 'https://jitpack.io' }
-    maven {
-        url 'https://maven.bymartrixx.me'
-    }
     maven { url "https://repo.erdbeerbaerlp.de/repository/maven-public/" }
     maven {
         name = "Modrinth"
@@ -47,7 +44,7 @@ dependencies {
     modCompileOnly "maven.modrinth:styled-chat:2.1.0+1.19.3"
 
     // =========  Common  =====================
-    modImplementation include('de.erdbeerbaerlp:dcintegration.common:2.6.2') {
+    modImplementation include('de.erdbeerbaerlp:dcintegration.common:2.6.4') {
         changing = true
     }
 
